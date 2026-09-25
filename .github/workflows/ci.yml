@@ -71,12 +71,13 @@ jobs:
         id: detect
         shell: bash
         run: |
+          # 排除 generated/：机器产出，不参与格式检查（见下）
           if find . \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) \
-               -not -path './.git/*' | grep -q .; then
+               -not -path './.git/*' -not -path './generated/*' | grep -q .; then
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "未发现 C/C++ 代码，跳过。"
+            echo "未发现 C/C++ 代码（generated/ 除外），跳过。"
           fi
 
       - name: Install clang-format
@@ -87,8 +88,11 @@ jobs:
         if: steps.detect.outputs.found == 'true'
         shell: bash
         run: |
+          # 只检查手写代码。generated/ 由 scripts/gen_lower_link.py 产出，
+          # 对它跑 clang-format 会因**版本差异**在本地与 CI 之间产生不一致输出，
+          # 进而让 gen-check 变成 flaky。生成器保证输出确定即可，格式不是契约。
           find . \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) \
-            -not -path './.git/*' -print0 | \
+            -not -path './.git/*' -not -path './generated/*' -print0 | \
             xargs -0 -r clang-format --dry-run --Werror
 
   # ---- Python 测试 ----
@@ -171,3 +175,55 @@ jobs:
           source install/setup.bash
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
+
+  # ---- 生成物一致性（本仓特有）----
+  # generated/ 由 scripts/gen_lower_link.py 从 protocol/lower_link.yaml 生成。
+  # 重新生成后若与提交内容有差异，说明有人手改了生成物、或改了定义却忘了重新生成。
+  # 这是「把架构变成可执行约束」的一个实例（foray_docs/repository_structure.md §6.5）。
+  gen-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检测是否存在生成器
+        id: detect
+        shell: bash
+        run: |
+          if [ -f scripts/gen_lower_link.py ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "未发现生成器，跳过。"
+          fi
+
+      - name: Set up Python
+        if: steps.detect.outputs.found == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: 安装依赖
+        if: steps.detect.outputs.found == 'true'
+        run: pip install pyyaml
+
+      - name: 重新生成并比对
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          python3 scripts/gen_lower_link.py
+          if ! git diff --exit-code -- generated/; then
+            echo "::error::generated/ 与 protocol/lower_link.yaml 不一致。"
+            echo "::error::请本地执行 python3 scripts/gen_lower_link.py 后一并提交。"
+            exit 1
+          fi
+          echo "生成物与定义一致。"
+
+      - name: 编译验证生成的头文件
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          # 生成的结构体带 static_assert(sizeof(X) == N)，字段写错导致的
+          # 填充/对齐问题在这里暴露，而不是漏到场上。
+          printf '#include "lower_link.hpp"\nint main() { return 0; }\n' > /tmp/link_smoke.cpp
+          g++ -std=c++17 -Wall -Wextra -Werror -I generated /tmp/link_smoke.cpp -o /tmp/link_smoke
+          echo "生成的 lower_link.hpp 编译通过。"

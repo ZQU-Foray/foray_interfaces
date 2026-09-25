@@ -50,7 +50,7 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 见 [`protocol/lower_link.md`](protocol/lower_link.md)。
 
 > **内容边界**：帧格式、生成器、校验规则由本仓维护；
-> **消息表由算法组与电控组共同确定**，本仓不预设。填写方法见规范 §4 与 §10。
+> **消息表由算法组与电控组共同确定**，本仓不预设。填写方法见规范「消息表」一节。
 
 **结构（已定）**
 

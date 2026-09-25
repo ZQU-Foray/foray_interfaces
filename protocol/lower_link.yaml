@@ -3,8 +3,8 @@
 # 两侧代码由 scripts/gen_lower_link.py 生成，禁止手写编解码。
 # 人读规范见 protocol/lower_link.md
 #
-# ⚠️ 消息表 messages: 为空 —— 由算法组与电控组共同确定。
-#    填写要求见规范 §4，修改方法见规范 §10。
+# ⚠️ 消息表 messages: 为空 —— 由算法组与电控组共同确定，本仓不预设。
+#    填写要求见规范「消息表」一节；新增消息照抄下面段的模板即可。
 #
 # 改协议 = 改本文件 + 重新生成 + 提交。CI 会校验生成物与 YAML 一致。
 
@@ -57,8 +57,10 @@ id_ranges:
 #
 # 字段支持的键：name（必填）· type（必填）· unit · note · frame
 # 字段支持的类型：float32 | uint8 | uint16 | uint32 | int16 | bool
-#                 数组写 float32[4]、uint8[128]；新类型需改生成器的 TYPES 表
+#   数组写 float32[4]、uint8[128]。⚠️ 流式写法里必须加引号：type: "int16[4]"
+#   （不加引号时 `[` 会被 YAML 当成流式序列的开始，解析结果与预期不符）
+#   类型清单与字节数见生成器顶部的 TYPES 表；新类型改那里。
 #
-# 完整说明见规范 §10.2。改完执行：python3 scripts/gen_lower_link.py
+# 改完执行：python3 scripts/gen_lower_link.py
 # ═══════════════════════════════════════════════════════════════════════
 messages: []

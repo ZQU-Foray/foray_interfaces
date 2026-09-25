@@ -8,7 +8,7 @@
 
 namespace foray::lower_link {
 
-// MAJOR 不一致时拒绝进入 RUNNING（见 protocol/lower_link.md §7）
+// MAJOR 不一致时拒绝进入 RUNNING（见 protocol/lower_link.md 的「版本」）
 constexpr uint16_t kProtocolVersion = 0x0001;
 constexpr uint8_t kProtocolMajor = 0;
 constexpr uint8_t kProtocolMinor = 1;

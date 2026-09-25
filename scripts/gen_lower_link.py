@@ -151,7 +151,7 @@ def gen_hpp(spec) -> str:
     a("namespace foray::lower_link {")
     a("")
     major, minor = (int(x) for x in spec["protocol"]["version"].split(".")[:2])
-    a("// MAJOR 不一致时拒绝进入 RUNNING（见 protocol/lower_link.md §7）")
+    a("// MAJOR 不一致时拒绝进入 RUNNING（见 protocol/lower_link.md 的「版本」）")
     a(f"constexpr uint16_t kProtocolVersion = 0x{major:02X}{minor:02X};")
     a(f"constexpr uint8_t kProtocolMajor = {major};")
     a(f"constexpr uint8_t kProtocolMinor = {minor};")

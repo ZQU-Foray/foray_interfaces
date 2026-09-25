@@ -115,6 +115,38 @@ OPEN → HANDSHAKE → RUNNING → (设备消失) → LOST → 重试 OPEN
 > 候选替代：**COBS** 封装（无 SOF 逃逸问题，额外开销更低）。
 > 未采用的原因——团队对 SOF+LEN+CRC 更熟悉，且该格式可复用到 CAN/UART。
 
+### 3.1 生成物提供的接口
+
+帧内偏移、CRC 覆盖范围**不在代码里手写**——`scripts/gen_lower_link.py` 从本文件的
+`frame:` 段推导，改帧结构只需改 YAML。生成的 `lower_link.hpp` 提供：
+
+| 符号 | 用途 |
+|---|---|
+| `kSof0` · `kSof1` · `kHeaderBytes` · `kMaxPayload` · `kMaxFrame` | 帧参数 |
+| `kLenOffset` · `kSeqOffset` · `kMsgIdOffset` · `kCrcOffset` · `kCrcRegionBytes` | 字段偏移与 CRC 覆盖范围，由 `frame` 段推导 |
+| `MsgId` · `expected_payload_size(id)` | 消息号；以及「该消息号应当有多长」。未定义的消息号返回 0，**必须丢弃而非按猜测解释** |
+| `crc16(data, len)` | CRC-16/CCITT-FALSE，附标准 check value 的编译期断言 |
+| `encode_frame(…)` / `decode_frame(…)` | 帧级组帧 / 解帧 |
+| `encode(msg, seq, out)` / `decode(payload, len, msg)` | **每条消息一对强类型包装**，长度由 `sizeof` 决定 |
+
+**为什么强类型包装是必须的**：`encode_frame` 只认 `void* + 长度`，调用方手填长度
+就能写出「ID 是 A、载荷是 B」这种编译期查不出的错配，两侧在场上静默错位。
+强类型包装把长度锁成 `sizeof`，解码侧校验 `LEN == sizeof` 后才解释。
+
+**解帧的契约**（`decode_frame`）：USB CDC 对应用层是字节流，一次 `read()` 可能拿到
+半帧、也可能拿到三帧半，因此解帧必须能接受任意长度的输入。
+
+| 返回 | 含义 | 调用方动作 |
+|---|---|---|
+| `true` | `view` / `frame_len` 有效 | 消费 `frame_len` 字节 |
+| `false` | 没有完整帧 | 丢弃 `keep_from` 字节（其前都成不了帧） |
+
+半帧必须留在缓冲里等后续数据（`keep_from` 不含它）；CRC 不通过的候选帧按字节滑动
+重同步——**丢帧优于错帧**。
+
+> 帧结构一旦改动必须同步改 `header_bytes` 与 `crc_covers`。生成器会校验两者与
+> 推导结果是否一致，不一致直接报错——不会静默生成 CRC 覆盖错区间的代码。
+
 ---
 
 ## 4. 消息表
@@ -264,12 +296,15 @@ messages:
 foray_interfaces/
 ├── protocol/
 │   ├── lower_link.md          本文件（人读）
-│   ├── lower_link.yaml        机器可读定义（**唯一事实来源**）
-│   └── generated/             由 gen_lower_link.py 生成——禁止手写
-│       ├── lower_link.hpp     → ControllerCode（裸机 C++，无 ROS 依赖）
-│       ├── msg/*.msg          → foray_platform（ROS 2 侧类型）
-│       └── message_table.md   → 消息表（自动生成，防止文档漂移）
-└── scripts/gen_lower_link.py  生成器
+│   └── lower_link.yaml        机器可读定义（**唯一事实来源**）
+├── generated/                 由 gen_lower_link.py 生成——禁止手写
+│   ├── lower_link.hpp         → ControllerCode（裸机 C++，无 ROS 依赖）
+│   ├── msg/*.msg              → foray_platform（ROS 2 侧类型）
+│   └── message_table.md       → 消息表（自动生成，防止文档漂移）
+├── scripts/gen_lower_link.py  生成器
+└── tests/
+    ├── lower_link_test.cpp    生成物 lower_link.hpp 的契约测试（CI 编译并运行）
+    └── test_gen.py            生成器测试（用 fixtures/sample.yaml 覆盖逐条消息路径）
 ```
 
 **改协议 = 改 `lower_link.yaml` + 重新生成 + 提交。** 两侧实现不允许手写编解码。
@@ -354,8 +389,10 @@ git commit -m "feat(protocol): ..."
 |---|---|
 | `sof` | 帧头魔数（2 B） |
 | `max_payload` | 载荷上限；`LEN` 是 1 字节，故 ≤ 255 |
-| `header_bytes` / `trailer_bytes` | **改了帧结构必须同步改这两个数** |
-| `endian` / `crc` | 数据表示与校验算法（目前未生成代码，仅记录） |
+| `header_bytes` | 头部总字节数。**必须等于 `sof + len + seq + msg_id` 的推导值**，否则报错 |
+| `trailer_bytes` | 帧尾字节数（crc16 → 2） |
+| `crc_covers` | CRC 覆盖的字段序列。**必须连续、且以 `payload` 结尾**；生成器据此推导 `kCrcOffset` / `kCrcRegionBytes` |
+| `endian` / `crc` | 数据表示与校验算法（未生成代码，仅记录） |
 
 **新增一条消息**
 
@@ -393,8 +430,15 @@ git commit -m "feat(protocol): ..."
 
 需要新类型时改 `scripts/gen_lower_link.py` 顶部的 `TYPES` 表。
 
+> ⚠️ **数组类型在 YAML 流式写法里必须加引号**：`type: "int16[4]"`。
+> 不加引号时 `[` 会被 YAML 当成流式序列的开始，解析结果与预期不符。
+>
 > **布局由编译器兜底。** 生成的结构体带 `static_assert(sizeof(X) == N)`——
 > 字段写错导致的填充/对齐问题在**编译期**报错，不会漏到场上。
+>
+> 生成前还会校验：消息号重复 / 消息名重复 / 消息号超出 1 字节 / 载荷超出
+> `max_payload` / 消息无字段。这些漏进生成物会变成难懂的编译错误，或更糟——
+> 编译通过但语义错的代码。
 
 **超时**（`timing:` 段）
 
@@ -422,8 +466,18 @@ timing:
 ### 10.4 提交前自检
 
 ```bash
+# 1. 生成物与定义一致
 python3 scripts/gen_lower_link.py && git diff --exit-code -- generated/
-ruff check . && black --check .
+
+# 2. Python：生成器 + 生成器测试
+ruff check . && black --check . && pytest -v
+
+# 3. C++：生成物的契约测试（CRC check value / 组帧解帧往返 / 失步重同步）
+g++ -std=c++17 -Wall -Wextra -Werror -I generated \
+  tests/lower_link_test.cpp -o /tmp/lower_link_test && /tmp/lower_link_test
 ```
 
-CI 会跑同样三项，外加**编译验证**生成的头文件——所以布局错误在 CI 就会暴露。
+CI 跑同样三项，另加 `tests/lower_link_test.cpp` 的编译与运行——所以布局错误与
+实现偏差在 CI 就会暴露。**只有「重新生成 + diff + 编译通过」是不够的**：
+两侧包含同一份错误实现时会一致地错下去，必须用外部锚点（CRC 标准 check value、
+固定帧字节序列）钉住。

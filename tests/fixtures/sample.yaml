@@ -1,0 +1,38 @@
+# 生成器测试用的样例定义 —— **不是真实协议**，不进任何生成物。
+#
+# 存在的理由：protocol/lower_link.yaml 的 messages: 为空时，生成器里「逐条消息」
+# 的生成路径（结构体、static_assert、载荷编解码、长度表）一次都不会执行 ——
+# 那是「第一条消息落地时才第一次运行」的代码。用这份 fixture 把它提前覆盖，
+# 见 tests/test_gen.py。
+#
+# 改动本文件不会影响协议，但会让 tests/test_gen.py 的断言失效，需同步更新。
+
+protocol:
+  name: lower_link
+  version: "1.4.0"
+  status: draft
+
+max_payload: 250
+
+messages:
+  - id: 0x01
+    name: CHASSIS_CMD
+    direction: host_to_mcu
+    status: proposed
+    doc: 底盘速度指令
+    fields:
+      - { name: stamp, type: time }
+      - { name: vx, type: float32, unit: m/s, frame: body }
+      - { name: vy, type: float32, unit: m/s, frame: body }
+      - { name: wz, type: float32, unit: rad/s, frame: body }
+
+  - id: 0x10
+    name: CHASSIS_STATE
+    direction: mcu_to_host
+    status: proposed
+    doc: 底盘状态
+    fields:
+      - { name: stamp, type: time }
+      - { name: vx, type: float32, unit: m/s }
+      - { name: flags, type: uint8, note: 位域 }
+      - { name: enc, type: "int16[4]", unit: 脉冲 }

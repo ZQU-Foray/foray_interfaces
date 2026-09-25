@@ -21,6 +21,11 @@
 │   ├── lower_link.hpp           裸机 C++：MsgId + POD 结构体 + 载荷编解码
 │   ├── msg/*.msg                ROS 2 消息类型
 │   └── message_table.md         消息表（防文档漂移）
+├── tests/                   测试
+│   ├── lower_link_test.cpp      生成物的契约测试（CI 编译并运行）
+│   ├── test_gen.py              生成器测试（CI 的 test-python 作业跑）
+│   └── fixtures/sample.yaml     生成器测试的样例定义——**非真实协议**
+├── requirements.txt         Python 依赖（仅 PyYAML，供 CI 的 test-python 作业）
 └── .github/
     └── workflows/
         └── ci.yml           组织 CI 模板 + 本仓特有的 gen-check

@@ -1,0 +1,5 @@
+# CI 的 test-python 作业安装本文件（见 .github/workflows/ci.yml）。
+#
+# 生成器 scripts/gen_lower_link.py 与测试 tests/test_gen.py 都只需要 PyYAML；
+# 除它之外只用标准库。ruff / black / pytest 由各作业自行安装。
+pyyaml

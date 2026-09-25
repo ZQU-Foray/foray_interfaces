@@ -218,12 +218,18 @@ jobs:
           fi
           echo "生成物与定义一致。"
 
-      - name: 编译验证生成的头文件
+      - name: 编译并运行生成物的契约测试
         if: steps.detect.outputs.found == 'true'
         shell: bash
         run: |
           # 生成的结构体带 static_assert(sizeof(X) == N)，字段写错导致的
           # 填充/对齐问题在这里暴露，而不是漏到场上。
-          printf '#include "lower_link.hpp"\nint main() { return 0; }\n' > /tmp/link_smoke.cpp
-          g++ -std=c++17 -Wall -Wextra -Werror -I generated /tmp/link_smoke.cpp -o /tmp/link_smoke
-          echo "生成的 lower_link.hpp 编译通过。"
+          if [ ! -f tests/lower_link_test.cpp ]; then
+            echo "未发现契约测试，仅做编译验证。"
+            printf '#include "lower_link.hpp"\nint main() { return 0; }\n' > /tmp/link_smoke.cpp
+            g++ -std=c++17 -Wall -Wextra -Werror -I generated /tmp/link_smoke.cpp -o /tmp/link_smoke
+            exit 0
+          fi
+          g++ -std=c++17 -Wall -Wextra -Werror -I generated \
+            tests/lower_link_test.cpp -o /tmp/lower_link_test
+          /tmp/lower_link_test

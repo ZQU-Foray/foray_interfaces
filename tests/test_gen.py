@@ -177,6 +177,16 @@ def test_max_payload_is_emitted(hpp):
     assert "constexpr size_t kMaxPayload = 250;" in hpp
 
 
+def test_message_table_needs_no_period(sample):
+    """周期归链路实现，不属于本仓——生成器不该依赖 period_hz。
+
+    fixture 里已经没有这个键，所以生成器若还去读它，这里会直接 KeyError。
+    """
+    table = gen_lower_link.gen_table(sample)
+    assert "CHASSIS_CMD" in table
+    assert "周期" not in table
+
+
 def test_time_struct_is_omitted_when_unused(sample):
     """没有消息用到 time 时不该发射 struct Time——不留死代码。
 

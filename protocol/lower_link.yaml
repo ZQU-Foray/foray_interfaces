@@ -24,7 +24,6 @@ max_payload: 250
 #   - id: 0x01                  # 消息号；分段见 protocol/lower_link.md
 #     name: CHASSIS_CMD         # 全大写；生成 enum class MsgId 的枚举名 + 同名 struct
 #     direction: host_to_mcu    # host_to_mcu | mcu_to_host
-#     period_hz: 100            # 0 = 事件触发
 #     doc: 一句话说明            # 进生成代码的注释
 #     fields:
 #       - { name: stamp, type: time }  # 每条消息必带，绝对时间

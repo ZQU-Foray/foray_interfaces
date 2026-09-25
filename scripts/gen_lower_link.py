@@ -242,13 +242,13 @@ def gen_table(spec) -> str:
         "",
         f'协议版本 `{spec["protocol"]["version"]}` · 状态 `{spec["protocol"]["status"]}`',
         "",
-        "| ID | 名称 | 方向 | 周期 | 载荷 | 状态 |",
-        "|---|---|---|---|---|---|",
+        "| ID | 名称 | 方向 | 载荷 | 状态 |",
+        "|---|---|---|---|---|",
     ]
     for m in spec["messages"]:
-        hz = f'{m["period_hz"]} Hz' if m.get("period_hz") else "事件"
+        # 不含周期：多久发一次归链路实现，本仓不定义（见 protocol/lower_link.md）
         L.append(
-            f'| `0x{m["id"]:02X}` | `{m["name"]}` | {m["direction"]} | {hz} '
+            f'| `0x{m["id"]:02X}` | `{m["name"]}` | {m["direction"]} '
             f'| {payload_size(m)} B | {m.get("status", "-")} |'
         )
     L.append("")

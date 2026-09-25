@@ -55,3 +55,53 @@ Rejected:
 - 每侧各自维护一份 `.hpp` / `.msg` —— 漂移风险不可接受
 - 在 USB CDC 上省略 CRC —— USB 链路层确有 CRC，但同一帧格式要复用到 CAN/UART，
   保留 CRC 换取格式可移植性（每帧成本 2 B）
+
+---
+
+## Decision
+
+Date: 2026-09-25
+
+Context: v0.1 草案落地后审查发现三处「生成物与定义会静默脱节」的地方：
+
+1. CRC 覆盖范围在生成器里写死为 `crc16(out + 2, payload_len + 3)`，与 YAML 的
+   `crc_covers` / `header_bytes` 没有任何关联
+2. `encode_frame` 只接受 `void* + payload_len`，把生成期已知的消息长度丢到运行时
+   由调用方手填
+3. CI 只做「重新生成 + diff + 编译」，没有任何外部锚点
+
+Decision:
+
+1. 帧内字段偏移与 CRC 覆盖范围由 `frame` 段推导。`crc_covers` 必须是**连续区间、
+   以 `payload` 结尾**；`header_bytes` 与推导结果不一致直接报错
+2. 每条消息生成一对强类型 `encode` / `decode`，长度由 `sizeof` 决定；解码侧校验
+   `LEN == sizeof` 后才解释。新增 `expected_payload_size(id)` 长度表
+3. 补两层测试：`tests/lower_link_test.cpp` 对生成物做契约测试（CRC 标准 check
+   value、固定帧字节序列、组帧解帧往返、失步重同步、半帧保留）；
+   `tests/test_gen.py` 用 fixture 覆盖「逐条消息」的生成路径
+
+Reason:
+
+- 偏移与 CRC 范围手写时，改 `header_bytes` 不会改变 CRC 覆盖区间——静默错位，
+  且两侧一致地错，直到跟 CAN 上的电调、跟裁判系统对接才暴露
+- 强类型包装把「ID 是 A、载荷是 B」这类错配从运行期提前到编译期。本仓声称
+  「布局由编译器兜底」，但 `static_assert(sizeof(X) == N)` 只兜住了结构体内部布局，
+  兜不住 ID ↔ 长度 ↔ 类型的对应关系
+- **「重新生成 + diff + 编译通过」证明不了实现对。** 生成式方案最大的盲区是两侧
+  包含同一份错误实现——必须用标准 check value 这类**外部锚点**钉住
+- 消息表为空时，生成器里「逐条消息」的路径一次都不会执行；那是「第一条消息落地时
+  才第一次运行」的代码。fixture 测试把它提前覆盖（本次即靠它抓到
+  `expected_payload_size` 生成在结构体定义之前、`sizeof` 无法解析的缺陷）
+
+Alternatives:
+
+- 把 CRC 起始偏移作为 YAML 字段显式写出 —— 多一处需要手改同步的地方，与
+  「唯一事实来源」相悖
+
+Rejected:
+
+- 生成 CRC 查表版本（512 B Flash）—— 当前位运算实现在 1 kHz 下够用，
+  等实测出瓶颈再换，避免过早优化
+- 内置链路管理消息（握手 / 心跳）—— 审查认定的结构缺口，但改动面涉及消息表内容
+  与两侧状态机，留待与电控组共同确定后再做（见 `plan.md`）
+- 补 Python 侧生成物 —— 同理留待消息表冻结后（目前 `msg/*.msg` 里也没有消息号）

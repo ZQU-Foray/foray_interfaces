@@ -119,7 +119,11 @@ OPEN → HANDSHAKE → RUNNING → (设备消失) → LOST → 重试 OPEN
 
 ## 4. 消息表
 
-> ⚠️ **v0.1 提案，待电控组逐条确认。** 消息号按「方向 + 功能」分段。
+> ⚠️ **本节是结构示例，不是最终约定。**
+> 消息表由**算法组与电控组共同确定**——本仓只提供结构、生成器与校验。
+> 修改方法见 [§10 如何修改协议](#10-如何修改协议)。
+>
+> 消息号按「方向 + 功能」分段。
 
 ### 4.1 消息号分配
 
@@ -139,6 +143,20 @@ OPEN → HANDSHAKE → RUNNING → (设备消失) → LOST → 重试 OPEN
 | `0x02` | `GIMBAL_CMD` | 200 Hz | `yaw` `pitch`（float32，rad，绝对角）· `yaw_rate` `pitch_rate`（float32，rad/s） |
 | `0x03` | `SHOOTER_CMD` | 事件 + 20 Hz 心跳 | `fire_authorized`（bool）· `trigger_count`（uint8）· `friction_level`（uint8） |
 
+**语义边界（重要）**
+
+协议传的是**语义**，不是控制模式：
+
+| 归属 | 内容 |
+|---|---|
+| **上位机** | 授权（操作手是否允许）· 时机（何时请求发射）· **目标身份绑定**（目标切换 ⇒ 授权失效） |
+| **下位机** | 位置环 / 速度环的选择 · 连发上限 · 发射间隔下限 · 卡弹与过热自保护 |
+
+> 若改成上位机下发「拨弹电机目标速度」，**换发射机构就要改上位机**——
+> 直接违背「新增兵种改动 < 10%」的复用目标。
+> 接口效率六条之一：**跨模块只传语义**。
+> `friction_level` 同理：上位机送档位语义，下位机决定目标转速。
+
 **安全约定**
 
 - `fire_authorized = false` 时下位机**必须拒绝拨弹**，而不是仅在 UI 上体现
@@ -156,13 +174,15 @@ OPEN → HANDSHAKE → RUNNING → (设备消失) → LOST → 重试 OPEN
 
 ### 4.4 透传（下→上）
 
+> ✅ **已确认**：裁判系统接在**下位机**，由 MCU 转发给上位机。
+
 | ID | 名称 | 触发 | 载荷 |
 |---|---|---|---|
 | `0x20` | `REFEREE_RAW` | 裁判系统帧到达即转发 | 裁判系统原始帧 |
 | `0x21` | `REMOTE_RAW` | 遥控器帧到达即转发 | SBUS 原始帧（备用通道） |
 
-> ⚠️ **待确认**：裁判系统接在下位机还是上位机直连？若由下位机转发，
-> 转发延迟与带宽需计入 §5.3。
+> 转发延迟与带宽需计入 §5.3。裁判系统帧率不高（多数 1–10 Hz），
+> 但**串口接收在 MCU 侧**，转发不得阻塞控制下行。
 
 ### 4.5 链路管理（双向）
 
@@ -289,14 +309,16 @@ foray_interfaces/
 
 ## 9. 待确认项
 
-| # | 问题 | 影响 |
+| # | 问题 | 状态 |
 |---|---|---|
-| 1 | **裁判系统接在下位机还是上位机？** | `REFEREE_RAW` 是否进消息表；转发延迟是否计入实时预算 |
-| 2 | **MCU USB 外设是全速还是高速？** | 决定调度延迟量级（1 ms vs 125 µs） |
-| 3 | `ControllerCode` 是否已有在用的帧格式？ | 若有，§3 应改为兼容现有格式而非新造 |
-| 4 | 云台是否需要前馈角速度？ | `GIMBAL_CMD` 载荷字段 |
-| 5 | 拨弹机构是位置控制还是速度控制？ | `SHOOTER_CMD` 载荷字段 |
-| 6 | 硬实时边界归属 | 见下 |
+| 1 | 裁判系统接在下位机还是上位机？ | ✅ **下位机** → 需要 `REFEREE_RAW` 与 MCU 侧串口转发 |
+| 2 | MCU USB 外设是全速还是高速？ | ⏳ **待实测**——决定调度延迟量级（1 ms vs 125 µs） |
+| 3 | `ControllerCode` 是否已有在用的帧格式？ | ⚠️ **最关键**——若有，§3 应改为兼容现有格式而非新造 |
+| 4 | 云台是否需要前馈角速度？ | 待定 → `GIMBAL_CMD` 载荷字段 |
+| 5 | 拨弹机构控制模式归属 | ✅ **控制模式归下位机，决策与授权归上位机**（见 §4.2 语义边界） |
+| 6 | 硬实时边界归属 | ✅ **已修正**（见下） |
+
+> **消息表本身的取舍不在这张表里**——那是算法组与电控组共同确定的内容，见 §10。
 
 ### 关于硬实时边界
 
@@ -313,3 +335,112 @@ foray_interfaces/
   对**跨 USB 的路径不成立**（`latency_timer` 1 ms + USB 帧调度）
 
 这条要回写进 `algorithm_structure.md`。
+
+---
+
+## 10. 如何修改协议
+
+协议内容由**算法组与电控组共同确定**。本仓只提供结构、生成器与校验，
+**不替你们决定消息表**。
+
+### 10.1 标准流程
+
+```bash
+# 1. 改定义（唯一事实来源）——消息号、字段、周期、超时
+vim protocol/lower_link.yaml
+
+# 2. 改叙述——YAML 里放不下的：时序策略、安全规则、异常处置
+vim protocol/lower_link.md
+
+# 3. 重新生成
+python3 scripts/gen_lower_link.py
+
+# 4. 连同生成物一起提交
+git add protocol/ generated/
+git commit -m "feat(protocol): ..."
+```
+
+**只改这两个文件。** `generated/` 下的任何文件都不要手改——CI 会重新生成并
+`git diff --exit-code`，手改必红。
+
+### 10.2 YAML 结构
+
+**帧参数**（`frame:` 段）
+
+| 键 | 含义 |
+|---|---|
+| `sof` | 帧头魔数（2 B） |
+| `max_payload` | 载荷上限；`LEN` 是 1 字节，故 ≤ 255 |
+| `header_bytes` / `trailer_bytes` | **改了帧结构必须同步改这两个数** |
+| `endian` / `crc` | 数据表示与校验算法（目前未生成代码，仅记录） |
+
+**新增一条消息**
+
+```yaml
+- id: 0x04                    # 消息号；分段规则见 id_ranges
+  name: GIMBAL_SCAN_CMD      # 生成 enum class MsgId 的枚举名 + 同名 struct
+  direction: host_to_mcu     # host_to_mcu | mcu_to_host | bidirectional
+  period_hz: 50              # 0 = 事件触发
+  status: proposed           # 自由标记，只进文档表格，不进代码
+  doc: 一句话说明             # 进生成代码的注释
+  fields:
+    - {name: mode,    type: uint8,   note: 扫描模式}
+    - {name: yaw_min, type: float32, unit: rad}
+```
+
+**字段的键**
+
+| 键 | 必填 | 说明 |
+|---|---|---|
+| `name` | ✅ | 生成结构体成员名 |
+| `type` | ✅ | 见下表 |
+| `unit` | | 单位，进注释 |
+| `note` | | 说明，进注释 |
+| `frame` | | 坐标系（如 `body`），进注释 |
+
+**支持的类型**
+
+| YAML | 生成 C++ | ROS 2 | 字节 |
+|---|---|---|---|
+| `float32` | `float` | `float32` | 4 |
+| `uint8` · `uint16` · `uint32` | `uint8_t` · … | `uint8` · … | 1 · 2 · 4 |
+| `int16` | `int16_t` | `int16` | 2 |
+| `bool` | `bool` | `bool` | 1 |
+| `float32[4]` | `float v[4]` | `float32[4]` | 16 |
+
+需要新类型时改 `scripts/gen_lower_link.py` 顶部的 `TYPES` 表。
+
+> **布局由编译器兜底。** 生成的结构体带 `static_assert(sizeof(X) == N)`——
+> 字段写错导致的填充/对齐问题在**编译期**报错，不会漏到场上。
+
+**超时**（`timing:` 段）
+
+```yaml
+timing:
+  timeouts_ms:
+    chassis_cmd: 100
+    shooter_cmd: 200
+```
+
+改这里会同步更新生成头文件里的 `kTimeout*Ms` 常量。
+
+### 10.3 哪些改动必须升 MAJOR
+
+| 改动 | 版本 |
+|---|---|
+| 新增消息号 | MINOR |
+| 在消息**末尾**追加字段 | MINOR |
+| **修改已有消息的字段布局**（改类型、增删中间字段） | **MAJOR** |
+| 改帧格式 / 字节序 / CRC | **MAJOR** |
+
+`MAJOR` 不一致时下位机拒绝进入 `RUNNING`（见 §7）。
+破坏性变更走 **D2**：≥2 人评审 + 兼容性影响评估。
+
+### 10.4 提交前自检
+
+```bash
+python3 scripts/gen_lower_link.py && git diff --exit-code -- generated/
+ruff check . && black --check .
+```
+
+CI 会跑同样三项，外加**编译验证**生成的头文件——所以布局错误在 CI 就会暴露。

@@ -117,7 +117,7 @@ struct POWER_STATE {
 };
 static_assert(sizeof(POWER_STATE) == 14, "POWER_STATE 布局与定义不符");
 
-// REFEREE_RAW  0x20  mcu_to_host  裁判系统原始帧，帧到达即转发。【待确认：裁判系统接在哪一侧】
+// REFEREE_RAW  0x20  mcu_to_host  裁判系统原始帧，帧到达即转发。【已确认：裁判系统接在下位机】
 struct REFEREE_RAW {
     static constexpr MsgId kId = MsgId::REFEREE_RAW;
     uint8_t len;

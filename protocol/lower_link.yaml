@@ -130,8 +130,8 @@ messages:
     name: REFEREE_RAW
     direction: mcu_to_host
     period_hz: 0
-    status: unconfirmed
-    doc: "裁判系统原始帧，帧到达即转发。【待确认：裁判系统接在哪一侧】"
+    status: confirmed
+    doc: "裁判系统原始帧，帧到达即转发。【已确认：裁判系统接在下位机】"
     fields:
       - {name: len, type: uint8}
       - {name: data, type: "uint8[128]", note: 裁判系统原始帧}

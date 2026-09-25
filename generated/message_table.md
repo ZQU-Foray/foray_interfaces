@@ -13,7 +13,7 @@
 | `0x12` | `GIMBAL_STATE` | mcu_to_host | 200 Hz | 12 B | proposed |
 | `0x13` | `ACTUATOR_STATE` | mcu_to_host | 50 Hz | 25 B | proposed |
 | `0x14` | `POWER_STATE` | mcu_to_host | 10 Hz | 14 B | proposed |
-| `0x20` | `REFEREE_RAW` | mcu_to_host | 事件 | 129 B | unconfirmed |
+| `0x20` | `REFEREE_RAW` | mcu_to_host | 事件 | 129 B | confirmed |
 | `0x21` | `REMOTE_RAW` | mcu_to_host | 事件 | 33 B | optional |
 | `0x70` | `HEARTBEAT` | bidirectional | 10 Hz | 7 B | proposed |
 | `0x71` | `HANDSHAKE_REQ` | host_to_mcu | 事件 | 2 B | proposed |
@@ -101,7 +101,7 @@
 
 ### `REFEREE_RAW` (0x20)
 
-裁判系统原始帧，帧到达即转发。【待确认：裁判系统接在哪一侧】
+裁判系统原始帧，帧到达即转发。【已确认：裁判系统接在下位机】
 
 | 字段 | 类型 | 单位 | 说明 |
 |---|---|---|---|

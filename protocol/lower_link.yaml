@@ -23,11 +23,14 @@ protocol:
 #     period_hz: 100            # 0 = 事件触发
 #     doc: 一句话说明            # 进生成代码的注释
 #     fields:
+#       - { name: stamp, type: time }  # 每条消息必带，绝对时间
 #       - { name: vx, type: float32, unit: m/s, frame: body }
 #       - { name: vy, type: float32, unit: m/s, frame: body }
 #
 # 字段的键：name（必填）· type（必填）· unit · note · frame
-# 字段的类型：float32 | uint8 | uint16 | uint32 | int16 | bool
+# 字段的类型：float32 | uint8 | uint16 | uint32 | int16 | bool | time
+#   time = int32 秒 + uint32 纳秒（绝对时间，Unix 纪元），8 B。
+#   **每条消息必须含一个 stamp 字段**——两侧时钟域不同，没有它无从判断数据多旧。
 #   数组写 float32[4]、uint8[128]。⚠️ 流式写法里必须加引号：type: "int16[4]"
 #   （不加引号时 `[` 会被 YAML 当成流式序列的开始，解析结果与预期不符）
 #   类型清单与字节数见生成器顶部的 TYPES 表；新类型改那里。

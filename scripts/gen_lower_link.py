@@ -76,24 +76,25 @@ def gen_hpp(spec) -> str:
     a("")
     a("namespace foray::lower_link {")
     a("")
-    a(
-        f'constexpr uint16_t kProtocolVersion = 0x{spec["protocol"]["version"].replace(".", "")[:4]};'
-    )
+    major, minor = (int(x) for x in spec["protocol"]["version"].split(".")[:2])
+    a("// MAJOR 不一致时拒绝进入 RUNNING（见 protocol/lower_link.md §7）")
+    a(f"constexpr uint16_t kProtocolVersion = 0x{major:02X}{minor:02X};")
+    a(f"constexpr uint8_t kProtocolMajor = {major};")
+    a(f"constexpr uint8_t kProtocolMinor = {minor};")
     a("")
     a("// ---- 帧格式 ----")
-    a(f'constexpr uint8_t  kSof0        = 0x{fr["sof"][0]:02X};')
-    a(f'constexpr uint8_t  kSof1        = 0x{fr["sof"][1]:02X};')
-    a(
-        f'constexpr size_t   kHeaderBytes = {fr["header_bytes"]};  // sof(2)+len(1)+seq(1)+msg_id(1)'
-    )
-    a(f'constexpr size_t   kTrailerBytes= {fr["trailer_bytes"]};  // crc16')
-    a(f'constexpr size_t   kMaxPayload  = {fr["max_payload"]};')
-    a("constexpr size_t   kMaxFrame    = kHeaderBytes + kMaxPayload + kTrailerBytes;")
+    a(f'constexpr uint8_t kSof0 = 0x{fr["sof"][0]:02X};')
+    a(f'constexpr uint8_t kSof1 = 0x{fr["sof"][1]:02X};')
+    a("// sof(2) + len(1) + seq(1) + msg_id(1)")
+    a(f'constexpr size_t kHeaderBytes = {fr["header_bytes"]};')
+    a(f'constexpr size_t kTrailerBytes = {fr["trailer_bytes"]}; // crc16')
+    a(f'constexpr size_t kMaxPayload = {fr["max_payload"]};')
+    a("constexpr size_t kMaxFrame = kHeaderBytes + kMaxPayload + kTrailerBytes;")
     a("")
     a("// ---- 消息号 ----")
     a("enum class MsgId : uint8_t {")
     for m in spec["messages"]:
-        a(f'    {m["name"]:<18s} = 0x{m["id"]:02X},')
+        a(f'    {m["name"]} = 0x{m["id"]:02X},')
     a("};")
     a("")
     a("// ---- 超时（ms）----")
@@ -112,8 +113,12 @@ def gen_hpp(spec) -> str:
         for f in m["fields"]:
             cpp, _, n, _, _ = parse_type(f["type"])
             decl = f"{cpp} {f['name']}[{n}];" if n > 1 else f"{cpp} {f['name']};"
-            unit = f", {f['unit']}" if f.get("unit") else ""
-            a(f"    {decl:<34s}// {f.get('note', '')}{unit}")
+            bits = [
+                b
+                for b in (f.get("note", ""), f.get("unit", ""), f.get("frame", ""))
+                if b
+            ]
+            a(f"    {decl} // {', '.join(bits)}" if bits else f"    {decl}")
         a("};")
         a(
             f'static_assert(sizeof({m["name"]}) == {payload_size(m)}, "{m["name"]} 布局与定义不符");'
@@ -138,20 +143,25 @@ def gen_hpp(spec) -> str:
     a(
         "// 返回写入 out 的字节数；out 容量须 >= kHeaderBytes + payload_len + kTrailerBytes。"
     )
-    a("inline size_t encode_frame(MsgId id, const void *payload, uint8_t payload_len,")
-    a("                          uint8_t seq, uint8_t *out) {")
-    a("    if (payload_len > kMaxPayload) return 0;")
+    a(
+        "inline size_t encode_frame(MsgId id, const void *payload, uint8_t payload_len, uint8_t seq,"
+    )
+    a("                          uint8_t *out) {")
+    a("    if (payload_len > kMaxPayload) {")
+    a("        return 0;")
+    a("    }")
     a("    out[0] = kSof0;")
     a("    out[1] = kSof1;")
     a("    out[2] = payload_len;")
     a("    out[3] = seq;")
     a("    out[4] = static_cast<uint8_t>(id);")
-    a("    if (payload_len) std::memcpy(out + kHeaderBytes, payload, payload_len);")
-    a(
-        "    const uint16_t crc = crc16(out + 2, static_cast<size_t>(payload_len) + 3);  // len..payload"
-    )
+    a("    if (payload_len > 0) {")
+    a("        std::memcpy(out + kHeaderBytes, payload, payload_len);")
+    a("    }")
+    a("    // CRC 覆盖 len..payload，不含 SOF")
+    a("    const uint16_t crc = crc16(out + 2, static_cast<size_t>(payload_len) + 3);")
     a("    const size_t tail = kHeaderBytes + payload_len;")
-    a("    out[tail]     = static_cast<uint8_t>(crc & 0xFF);")
+    a("    out[tail] = static_cast<uint8_t>(crc & 0xFF);")
     a("    out[tail + 1] = static_cast<uint8_t>(crc >> 8);")
     a("    return tail + kTrailerBytes;")
     a("}")

@@ -71,12 +71,13 @@ jobs:
         id: detect
         shell: bash
         run: |
+          # 排除 generated/：机器产出，不参与格式检查（见下）
           if find . \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) \
-               -not -path './.git/*' | grep -q .; then
+               -not -path './.git/*' -not -path './generated/*' | grep -q .; then
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "未发现 C/C++ 代码，跳过。"
+            echo "未发现 C/C++ 代码（generated/ 除外），跳过。"
           fi
 
       - name: Install clang-format
@@ -87,8 +88,11 @@ jobs:
         if: steps.detect.outputs.found == 'true'
         shell: bash
         run: |
+          # 只检查手写代码。generated/ 由 scripts/gen_lower_link.py 产出，
+          # 对它跑 clang-format 会因**版本差异**在本地与 CI 之间产生不一致输出，
+          # 进而让 gen-check 变成 flaky。生成器保证输出确定即可，格式不是契约。
           find . \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) \
-            -not -path './.git/*' -print0 | \
+            -not -path './.git/*' -not -path './generated/*' -print0 | \
             xargs -0 -r clang-format --dry-run --Werror
 
   # ---- Python 测试 ----

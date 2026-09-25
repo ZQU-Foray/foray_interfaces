@@ -36,46 +36,13 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 ## 接口
 
-本仓承载**上位机的全部跨边界契约**：
+按 `foray_docs/algorithm_structure.md` §6，本仓承载**三份必须优先冻结契约**中的两份：
 
 | 契约 | 内容 | 状态 |
 |---|---|---|
-| **上位机 ↔ 下位机链路协议** | USB CDC 帧格式（**结构已定**）+ 消息表（**待填写**） | 结构 v0.1 → [`protocol/`](protocol/lower_link.md) |
 | **决策层接口** | `WorldSnapshot` / `ActionMask` / `Decision` | 待冻结（P0） |
 | **机间态势协议** | 哨兵 ↔ 步兵的态势消息 | 待冻结（P0） |
 | 裁判系统消息 | 串口协议 `V1.7.0 (20241225)`，7 个消息 | 待迁入 |
-
-## 上位机 ↔ 下位机链路协议
-
-见 [`protocol/lower_link.md`](protocol/lower_link.md)。
-
-> **内容边界**：帧格式、生成器、校验规则由本仓维护；
-> **消息表由算法组与电控组共同确定**，本仓不预设。填写方法见规范「消息表」一节。
-
-**结构（已定）**
-
-| 项 | 内容 |
-|---|---|
-| 物理层 | **USB CDC**（`/dev/ttyACM*`，用 udev 固定为 `/dev/foray_lower`） |
-| 帧格式 | `SOF(2) + LEN(1) + SEQ(1) + MSG_ID(1) + PAYLOAD(≤250) + CRC16(2)` |
-| 数据表示 | 全小端 · 单精度浮点 · `#pragma pack(1)` |
-| 失联退化 | **由下位机自主执行**（硬路径），不依赖上位机 |
-
-**内容（待填写）**：消息号 / 名称 / 方向 / 周期 / 字段 · 各链路频率 · 超时阈值。
-
-**三层归属**
-
-| 产物 | 位置 |
-|---|---|
-| 规范 + 定义 + 生成物 | **本仓** |
-| 上位机侧实现（帧同步 / 超时 / 重连） | `foray_platform`（L2 下行 HAL） |
-| 下位机侧实现（编解码 / 驱动 / 安全态） | `ControllerCode` |
-
-**两侧代码由生成器产出，禁止手写**——否则字节序、字段偏移、CRC 必然漂移。
-
-```bash
-python3 scripts/gen_lower_link.py    # 改完 protocol/lower_link.yaml 后执行
-```
 
 ## 约定（必须遵守）
 

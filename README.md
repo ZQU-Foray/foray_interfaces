@@ -40,22 +40,28 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 | 契约 | 内容 | 状态 |
 |---|---|---|
-| **上位机 ↔ 下位机链路协议** | USB CDC 帧格式 + 消息表（算法组 ↔ 电控组） | **草案 v0.1** → [`protocol/`](protocol/lower_link.md) |
+| **上位机 ↔ 下位机链路协议** | USB CDC 帧格式（**结构已定**）+ 消息表（**待填写**） | 结构 v0.1 → [`protocol/`](protocol/lower_link.md) |
 | **决策层接口** | `WorldSnapshot` / `ActionMask` / `Decision` | 待冻结（P0） |
 | **机间态势协议** | 哨兵 ↔ 步兵的态势消息 | 待冻结（P0） |
 | 裁判系统消息 | 串口协议 `V1.7.0 (20241225)`，7 个消息 | 待迁入 |
 
 ## 上位机 ↔ 下位机链路协议
 
-见 [`protocol/lower_link.md`](protocol/lower_link.md)。要点：
+见 [`protocol/lower_link.md`](protocol/lower_link.md)。
+
+> **内容边界**：帧格式、生成器、校验规则由本仓维护；
+> **消息表由算法组与电控组共同确定**，本仓不预设。填写方法见规范 §4 与 §10。
+
+**结构（已定）**
 
 | 项 | 内容 |
 |---|---|
 | 物理层 | **USB CDC**（`/dev/ttyACM*`，用 udev 固定为 `/dev/foray_lower`） |
 | 帧格式 | `SOF(2) + LEN(1) + SEQ(1) + MSG_ID(1) + PAYLOAD(≤250) + CRC16(2)` |
 | 数据表示 | 全小端 · 单精度浮点 · `#pragma pack(1)` |
-| 频率 | 控制 100–200 Hz 下行 · 状态 200 Hz 上行 · 心跳 10 Hz |
 | 失联退化 | **由下位机自主执行**（硬路径），不依赖上位机 |
+
+**内容（待填写）**：消息号 / 名称 / 方向 / 周期 / 字段 · 各链路频率 · 超时阈值。
 
 **三层归属**
 

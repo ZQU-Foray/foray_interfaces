@@ -3,6 +3,9 @@
 # 两侧代码由 scripts/gen_lower_link.py 生成，禁止手写编解码。
 # 人读规范见 protocol/lower_link.md
 #
+# ⚠️ 消息表 messages: 为空 —— 由算法组与电控组共同确定。
+#    填写要求见规范 §4，修改方法见规范 §10。
+#
 # 改协议 = 改本文件 + 重新生成 + 提交。CI 会校验生成物与 YAML 一致。
 
 protocol:
@@ -11,178 +14,51 @@ protocol:
   status: draft
   description: 上位机 ↔ 下位机 USB CDC 链路协议
 
+# ─────────── 帧格式（结构，本仓维护）───────────
 frame:
-  sof: [0xA5, 0x5A]
+  sof: [0xA5, 0x5A] # 帧头魔数，2 B
   endian: little
   crc: crc16-ccitt-false
-  crc_covers: [len, seq, msg_id, payload]
-  max_payload: 250
+  crc_covers: [len, seq, msg_id, payload] # 不含 SOF
+  max_payload: 250 # LEN 是 1 字节，故 ≤ 255
   header_bytes: 5 # sof(2) + len(1) + seq(1) + msg_id(1)
   trailer_bytes: 2 # crc16
 
+# ─────────── 时序（内容，待填写）───────────
 timing:
-  heartbeat_hz: 10
-  timeouts_ms:
-    chassis_cmd: 100
-    gimbal_cmd: 100
-    shooter_cmd: 200
-    heartbeat: 500
-  seq_warn_gap: 3
-  seq_error_gap: 10
+  heartbeat_hz: 0 # ⬜ 待填写
+  # 超时阈值。键名 = 消息 name 的小写下划线形式，生成 kTimeout<Key>Ms 常量。
+  # 例：chassis_cmd: 100  →  constexpr uint32_t kTimeoutChassisCmdMs = 100;
+  timeouts_ms: {} # ⬜ 待填写
 
-# 消息号分段
+# ─────────── 消息号分段（建议，可改）───────────
 id_ranges:
-  - {range: "0x00-0x0F", purpose: "控制类（上→下）"}
-  - {range: "0x10-0x1F", purpose: "状态类（下→上）"}
-  - {range: "0x20-0x2F", purpose: "透传 / 转发"}
-  - {range: "0x30-0x3F", purpose: "配置 / 标定"}
-  - {range: "0x70-0x7F", purpose: "链路管理（双向）"}
+  - { range: "0x00-0x0F", purpose: "控制类（上→下）" }
+  - { range: "0x10-0x1F", purpose: "状态类（下→上）" }
+  - { range: "0x20-0x2F", purpose: "透传 / 转发" }
+  - { range: "0x30-0x3F", purpose: "配置 / 标定" }
+  - { range: "0x70-0x7F", purpose: "链路管理（双向）" }
 
-messages:
-  # ─────────── 控制类（上→下） ───────────
-  - id: 0x01
-    name: CHASSIS_CMD
-    direction: host_to_mcu
-    period_hz: 100
-    status: proposed
-    doc: 底盘速度指令，车体坐标系
-    fields:
-      - {name: vx, type: float32, unit: m/s, frame: body}
-      - {name: vy, type: float32, unit: m/s, frame: body}
-      - {name: wz, type: float32, unit: rad/s, frame: body}
-
-  - id: 0x02
-    name: GIMBAL_CMD
-    direction: host_to_mcu
-    period_hz: 200
-    status: proposed
-    doc: 云台目标角与角速度，绝对角
-    fields:
-      - {name: yaw, type: float32, unit: rad, note: 向左为正}
-      - {name: pitch, type: float32, unit: rad, note: 向下为正}
-      - {name: yaw_rate, type: float32, unit: rad/s}
-      - {name: pitch_rate, type: float32, unit: rad/s}
-
-  - id: 0x03
-    name: SHOOTER_CMD
-    direction: host_to_mcu
-    period_hz: 20
-    status: proposed
-    doc: 发射指令 + 授权心跳。超时即撤销授权（见规范 §5.2）
-    fields:
-      - {name: fire_authorized, type: bool, note: false 时下位机必须拒绝拨弹}
-      - {name: trigger_count, type: uint8, note: 请求拨弹次数}
-      - {name: friction_level, type: uint8, note: 摩擦轮档位}
-
-  # ─────────── 状态类（下→上） ───────────
-  - id: 0x11
-    name: CHASSIS_STATE
-    direction: mcu_to_host
-    period_hz: 200
-    status: proposed
-    doc: 底盘里程计与 IMU 姿态
-    fields:
-      - {name: vx, type: float32, unit: m/s}
-      - {name: vy, type: float32, unit: m/s}
-      - {name: wz, type: float32, unit: rad/s}
-      - {name: roll, type: float32, unit: rad}
-      - {name: pitch, type: float32, unit: rad}
-      - {name: yaw, type: float32, unit: rad}
-
-  - id: 0x12
-    name: GIMBAL_STATE
-    direction: mcu_to_host
-    period_hz: 200
-    status: proposed
-    doc: 云台实际角与角速度
-    fields:
-      - {name: yaw, type: float32, unit: rad}
-      - {name: pitch, type: float32, unit: rad}
-      - {name: yaw_rate, type: float32, unit: rad/s}
-
-  - id: 0x13
-    name: ACTUATOR_STATE
-    direction: mcu_to_host
-    period_hz: 50
-    status: proposed
-    doc: 执行机构状态汇总
-    fields:
-      - {name: enabled_bits, type: uint16, note: 各机构使能位}
-      - {name: motor_current, type: "float32[4]", unit: A, note: 4 路电机电流}
-      - {name: motor_temp, type: "uint8[4]", unit: degC, note: 4 路电机温度}
-      - {name: trigger_state, type: uint8, note: 拨弹机构状态枚举}
-      - {name: friction_rpm, type: uint16, unit: rpm}
-
-  - id: 0x14
-    name: POWER_STATE
-    direction: mcu_to_host
-    period_hz: 10
-    status: proposed
-    doc: 电源与热量
-    fields:
-      - {name: voltage, type: float32, unit: V}
-      - {name: current, type: float32, unit: A}
-      - {name: energy_buffer, type: uint16, unit: J, note: 剩余能量}
-      - {name: chassis_power, type: float32, unit: W}
-
-  # ─────────── 透传（下→上） ───────────
-  - id: 0x20
-    name: REFEREE_RAW
-    direction: mcu_to_host
-    period_hz: 0
-    status: confirmed
-    doc: "裁判系统原始帧，帧到达即转发。【已确认：裁判系统接在下位机】"
-    fields:
-      - {name: len, type: uint8}
-      - {name: data, type: "uint8[128]", note: 裁判系统原始帧}
-
-  - id: 0x21
-    name: REMOTE_RAW
-    direction: mcu_to_host
-    period_hz: 0
-    status: optional
-    doc: SBUS 原始帧，备用通道
-    fields:
-      - {name: len, type: uint8}
-      - {name: data, type: "uint8[32]"}
-
-  # ─────────── 链路管理（双向） ───────────
-  - id: 0x70
-    name: HEARTBEAT
-    direction: bidirectional
-    period_hz: 10
-    status: proposed
-    doc: 链路心跳
-    fields:
-      - {name: seq, type: uint8}
-      - {name: uptime_ms, type: uint32, unit: ms}
-      - {name: status_bits, type: uint16}
-
-  - id: 0x71
-    name: HANDSHAKE_REQ
-    direction: host_to_mcu
-    period_hz: 0
-    status: proposed
-    doc: 上位机握手请求
-    fields:
-      - {name: host_protocol_version, type: uint16}
-
-  - id: 0x72
-    name: HANDSHAKE_ACK
-    direction: mcu_to_host
-    period_hz: 0
-    status: proposed
-    doc: 下位机握手应答
-    fields:
-      - {name: mcu_protocol_version, type: uint16}
-      - {name: capability_bits, type: uint32}
-
-  - id: 0x73
-    name: LINK_ERROR
-    direction: mcu_to_host
-    period_hz: 0
-    status: proposed
-    doc: 下位机上报链路错误
-    fields:
-      - {name: error_code, type: uint8}
-      - {name: detail, type: uint32}
+# ═══════════════════════════════════════════════════════════════════════
+# 消息表 —— 待填写
+#
+# 新增一条消息：把下面这段复制到 messages: 下，按需修改。
+#
+#   - id: 0x01                  # 消息号，参考上面的 id_ranges
+#     name: CHASSIS_CMD         # 全大写；生成 enum class MsgId 的枚举名 + 同名 struct
+#     direction: host_to_mcu    # host_to_mcu | mcu_to_host | bidirectional
+#     period_hz: 100            # 0 = 事件触发
+#     status: proposed          # 自由标记，只进文档表格，不进代码
+#     doc: 一句话说明            # 进生成代码的注释
+#     fields:
+#       - { name: vx, type: float32, unit: m/s, frame: body }
+#       - { name: vy, type: float32, unit: m/s, frame: body }
+#       - { name: wz, type: float32, unit: rad/s, frame: body }
+#
+# 字段支持的键：name（必填）· type（必填）· unit · note · frame
+# 字段支持的类型：float32 | uint8 | uint16 | uint32 | int16 | bool
+#                 数组写 float32[4]、uint8[128]；新类型需改生成器的 TYPES 表
+#
+# 完整说明见规范 §10.2。改完执行：python3 scripts/gen_lower_link.py
+# ═══════════════════════════════════════════════════════════════════════
+messages: []

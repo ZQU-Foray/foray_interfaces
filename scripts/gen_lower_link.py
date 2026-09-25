@@ -14,6 +14,7 @@ CI 校验：重新生成后 `git diff --exit-code`，不一致即失败。
 
 from __future__ import annotations
 
+import glob
 import os
 import re
 import sys
@@ -231,6 +232,11 @@ def main() -> None:
         spec = yaml.safe_load(fh)
 
     os.makedirs(os.path.join(OUT, "msg"), exist_ok=True)
+
+    # 清理过期生成物：消息被删除时，对应的 .msg 必须一起消失，
+    # 否则残留文件会让「生成物 == 定义」这个不变式失真。
+    for stale in glob.glob(os.path.join(OUT, "msg", "*.msg")):
+        os.remove(stale)
 
     written = []
 

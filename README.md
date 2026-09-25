@@ -36,10 +36,11 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 ## 接口
 
-按 `foray_docs/algorithm_structure.md` §6，本仓承载**三份必须优先冻结契约**中的两份：
+本仓承载**上位机的全部跨边界契约**（`foray_docs/algorithm_structure.md` §6 的三份优先冻结契约中，本仓占两份）：
 
 | 契约 | 内容 | 状态 |
 |---|---|---|
+| **上位机 ↔ 下位机通讯协议** | 消息表（**待填写**）+ 字节表示。帧格式不属本仓 | 内容层 → [`protocol/`](protocol/lower_link.md) |
 | **决策层接口** | `WorldSnapshot` / `ActionMask` / `Decision` | 待冻结（P0） |
 | **机间态势协议** | 哨兵 ↔ 步兵的态势消息 | 待冻结（P0） |
 | 裁判系统消息 | 串口协议 `V1.7.0 (20241225)`，7 个消息 | 待迁入 |
@@ -58,7 +59,9 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 - 语义版本化；不兼容改动必须给**兼容期** + 影响面清单
 
-- 本仓 `README.md` 是字段契约的权威文本，**必须与 `msg/` 定义同步更新**——否则会出现「文档说 A、代码做 B」
+- 字段契约的权威文本是各契约自己的规范（如 [`protocol/lower_link.md`](protocol/lower_link.md)）
+  与它生成的 `msg/` 定义，**两者必须同步更新**——否则会出现「文档说 A、代码做 B」。
+  `README.md` 只写定位、接口清单与上下游
 
 
 

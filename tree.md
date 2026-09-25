@@ -12,6 +12,9 @@
 ├── CODEOWNERS               Review 自动分派
 ├── .foray-layer             所属层与依赖边界（CI 校验）
 ├── .gitignore
+├── protocol/                协议契约
+│   ├── lower_link.md            上位机 ↔ 下位机通讯协议（人读 · 内容层）
+│   └── lower_link.yaml          机器可读定义（唯一事实来源）
 └── .github/
     └── workflows/
         └── ci.yml           复制自组织 CI 模板

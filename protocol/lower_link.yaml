@@ -1,0 +1,40 @@
+# 上位机 ↔ 下位机通讯协议 —— 机器可读定义（唯一事实来源）
+#
+# 内容层代码由 scripts/gen_lower_link.py 生成，禁止手写。
+# 人读规范见 protocol/lower_link.md
+#
+# ⚠️ 帧格式（怎么发送与接收）不在此定义，归链路实现。
+#
+# 改协议 = 改本文件 + 重新生成 + 提交。CI 会校验生成物与定义一致。
+
+protocol:
+  name: lower_link
+  version: "0.1.0"
+  status: draft
+
+# ═══════════════════════════════════════════════════════════════════════
+# 消息表 —— 待填写
+#
+# 新增一条消息：把下面这段复制到 messages: 下，按需修改。
+#
+#   - id: 0x01                  # 消息号；分段见 protocol/lower_link.md
+#     name: CHASSIS_CMD         # 全大写；生成 enum class MsgId 的枚举名 + 同名 struct
+#     direction: host_to_mcu    # host_to_mcu | mcu_to_host
+#     period_hz: 100            # 0 = 事件触发
+#     doc: 一句话说明            # 进生成代码的注释
+#     fields:
+#       - { name: vx, type: float32, unit: m/s, frame: body }
+#       - { name: vy, type: float32, unit: m/s, frame: body }
+#
+# 字段的键：name（必填）· type（必填）· unit · note · frame
+# 字段的类型：float32 | uint8 | uint16 | uint32 | int16 | bool
+#   数组写 float32[4]、uint8[128]。⚠️ 流式写法里必须加引号：type: "int16[4]"
+#   （不加引号时 `[` 会被 YAML 当成流式序列的开始，解析结果与预期不符）
+#   类型清单与字节数见生成器顶部的 TYPES 表；新类型改那里。
+#
+# 禁变长字段（字符串 / 变长数组）——载荷长度必须是编译期常量。
+# 字段的语义 / 单位 / 坐标系 / 取值范围 / 缺失表示，见 protocol/lower_link.md。
+#
+# 改完执行：python3 scripts/gen_lower_link.py
+# ═══════════════════════════════════════════════════════════════════════
+messages: []

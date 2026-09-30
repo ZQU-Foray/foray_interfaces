@@ -14,7 +14,8 @@
 ├── .gitignore
 ├── protocol/                协议契约
 │   ├── lower_link.md            上位机 ↔ 下位机通讯协议（人读 · 内容层）
-│   └── lower_link.yaml          机器可读定义（唯一事实来源）
+│   ├── lower_link.yaml          机器可读定义（唯一事实来源）
+│   └── robolink.md              上下位机链路协议 v0.1（全栈候选稿：帧层 + 内容层）
 ├── scripts/
 │   └── gen_lower_link.py    内容层代码生成器
 ├── generated/               由生成器产出——禁止手写
@@ -31,7 +32,7 @@
         └── ci.yml           组织 CI 模板 + 本仓特有的 gen-check
 ```
 
-> 目前只有协议契约与它的生成器；帧格式（怎么发送与接收）不在本仓。
+> 目前只有协议契约与它的生成器；帧格式是否入仓待裁决（见 `protocol/robolink.md` 开头的三个待裁决点）。
 > **禁止直接修改 `generated/` 下的任何文件**——改 `lower_link.yaml` 后重新生成。
 
 ## 记录约束

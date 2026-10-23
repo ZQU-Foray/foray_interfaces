@@ -40,7 +40,7 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 | 契约 | 内容 | 状态 |
 |---|---|---|
-| **上位机 ↔ 下位机通讯协议** | 两份候选稿并行待收敛：lower_link（仅内容层，YAML 单源，消息表待填写）/ 上下位机链路协议 v0.1（帧层 + 内容层全栈，7 条消息） | 候选 → [`lower_link.md`](protocol/lower_link.md) · [`robolink.md`](protocol/robolink.md) |
+| **上位机 ↔ 下位机通讯协议** | 两份候选稿并行待收敛：lower_link（仅内容层，YAML 单源，消息表待填写）/ 上下位机链路协议 v0.2（帧层 + 内容层全栈，8 条消息，含云台姿态反馈） | 候选 → [`lower_link.md`](protocol/lower_link.md) · [`robolink.md`](protocol/robolink.md) |
 | **决策层接口** | `WorldSnapshot` / `ActionMask` / `Decision` | 待冻结（P0） |
 | **机间态势协议** | 哨兵 ↔ 步兵的态势消息 | 待冻结（P0） |
 | 裁判系统消息 | 串口协议 `V1.7.0 (20241225)`，7 个消息 | 待迁入 |

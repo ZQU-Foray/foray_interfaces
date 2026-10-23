@@ -15,7 +15,7 @@
 ├── protocol/                协议契约
 │   ├── lower_link.md            上位机 ↔ 下位机通讯协议（人读 · 内容层）
 │   ├── lower_link.yaml          机器可读定义（唯一事实来源）
-│   └── robolink.md              上下位机链路协议 v0.1（全栈候选稿：帧层 + 内容层）
+│   └── robolink.md              上下位机链路协议 v0.2（全栈候选稿：帧层 + 内容层）
 ├── scripts/
 │   └── gen_lower_link.py    内容层代码生成器
 ├── generated/               由生成器产出——禁止手写

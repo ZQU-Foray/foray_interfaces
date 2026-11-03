@@ -31,6 +31,9 @@ compile_commands.json
 *~
 .DS_Store
 
+# ---- 本地工具状态 ----
+.dsh/
+
 # ---- 运行期产物 ----
 *.bag
 *.db3

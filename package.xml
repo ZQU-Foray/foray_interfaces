@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+    <name>foray_interfaces</name>
+    <version>0.1.0</version>
+    <description>X2 契约层：机内接口 + 机间态势协议 + 裁判系统消息（header-only，零 ROS 构建依赖）</description>
+    <maintainer email="2077987156@qq.com">RyanZ</maintainer>
+    <license>TODO</license>
+
+    <!-- 纯 CMake 包：本仓是 header-only 契约层，不编译源码，也不依赖 ament/rosidl。
+         colcon 按 build_type=cmake 构建；下游 find_package(foray_interfaces) 取
+         foray_interfaces::lower_link（见 decision.md「构建形态」）。 -->
+    <buildtool_depend>cmake</buildtool_depend>
+
+    <export>
+        <build_type>cmake</build_type>
+    </export>
+</package>

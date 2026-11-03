@@ -1,0 +1,9 @@
+# foray_interfaces 的 CMake package config。
+#
+# 只导出生成物的 INTERFACE target：下游 find_package(foray_interfaces REQUIRED)
+# 后链 foray_interfaces::lower_link 即可拿到 include 根与 cxx_std_17。
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/foray_interfacesTargets.cmake")
+
+check_required_components(foray_interfaces)

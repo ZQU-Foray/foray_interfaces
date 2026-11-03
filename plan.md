@@ -6,6 +6,9 @@
 - [ ] 评审冻结 `protocol/robolink.md` v0.2（PR #2）：云台角 rad、角速度前馈、`safety_state` 取值、
       `GIMBAL_ATTITUDE`；与 lower_link 的三个待裁决点仍待组长裁决
 - [ ] 该协议的生成器与生成物（只生成内容层：`MsgId` + POD 结构体 + 载荷编解码），以及 CI 校验与测试
+- [x] 生成物导出为 **INTERFACE CMake target**（`foray_interfaces::lower_link`）：
+      `find_package(foray_interfaces)` 可用，`ctest` 跑生成物契约测试，
+      CI 的 `build-cmake` 作业验证安装后的消费路径（见 `decision.md` 2026-11-03）
 - [ ] **周期与调度归链路实现**（`foray_platform` 与 `ControllerCode`）——本仓不再定义「多久发一次」，
       消息表里也没有这一列。由此产生一个跨组义务：**电控组那侧按什么速率预期收包、看门狗设多少**，
       需与 `foray_platform` 对齐。这与帧格式那次是**同形**的跨组问题（契约落在实现仓）

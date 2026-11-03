@@ -9,6 +9,10 @@
 ├── plan.md                  开发计划与进度
 ├── decision.md              关键工程决策日志
 ├── tree.md                  本文件
+├── CMakeLists.txt           纯 CMake 包：INTERFACE target 与 CTest
+├── package.xml              colcon 包描述（build_type=cmake，零 ROS 依赖）
+├── cmake/
+│   └── foray_interfacesConfig.cmake.in   下游 find_package 的 package config 模板
 ├── CODEOWNERS               Review 自动分派
 ├── .foray-layer             所属层与依赖边界（CI 校验）
 ├── .gitignore
@@ -23,16 +27,19 @@
 │   ├── msg/*.msg                ROS 2 消息类型
 │   └── message_table.md         消息表（防文档漂移）
 ├── tests/                   测试
-│   ├── lower_link_test.cpp      生成物的契约测试（CI 编译并运行）
+│   ├── lower_link_test.cpp      生成物的契约测试（CTest 跑）
 │   ├── test_gen.py              生成器测试（CI 的 test-python 作业跑）
 │   └── fixtures/sample.yaml     生成器测试的样例定义——**非真实协议**
 ├── requirements.txt         Python 依赖（仅 PyYAML，供 CI 的 test-python 作业）
 └── .github/
     └── workflows/
-        └── ci.yml           组织 CI 模板 + 本仓特有的 gen-check
+        └── ci.yml           组织 CI 模板 + 本仓特有的 build-cmake / gen-check
 ```
 
-> 目前只有协议契约与它的生成器；帧格式是否入仓待裁决（见 `protocol/robolink.md` 开头的三个待裁决点）。
+> 内容层只有协议契约与它的生成器；帧格式是否入仓待裁决（见 `protocol/robolink.md` 开头的三个待裁决点）。
+> 生成物是 header-only 的：`CMakeLists.txt` 导出 INTERFACE target
+> `foray_interfaces::lower_link`（include 根 `generated/`，安装后 `include/`），
+> 下游 `find_package(foray_interfaces REQUIRED)` 后直接链它。
 > **禁止直接修改 `generated/` 下的任何文件**——改 `lower_link.yaml` 后重新生成。
 
 ## 记录约束

@@ -59,3 +59,35 @@ Alternatives:
 Rejected:
 - 累计角系（见 Reason）
 - 发送欧拉角 yaw/pitch：ZYX 分解在 pitch ±90° 附近奇异，且丢失 roll
+---
+
+## Decision
+
+Date: 2026-11-03
+
+Context: 生成物 `generated/lower_link.hpp` 是 header-only 的。下游各仓在 colcon 工作区里需要
+以可链接目标的形式消费它（include 根、C++ 标准、`find_package` 入口）。此前本仓没有构建
+系统，CI 用裸 `g++` 编译测试，下游只能各自写 `-I <repo>/generated`。
+
+Decision: 本仓采用**纯 CMake 包**（`package.xml` 的 `<build_type>cmake</build_type>`），
+导出 **INTERFACE target `foray_interfaces::lower_link`**（`EXPORT_NAME lower_link`），
+不引入 ament_cmake / rosidl 构建依赖；`tests/lower_link_test.cpp` 接入 CTest，
+CI 新增 `build-cmake` 作业构建、测试并验证安装后的 `find_package` 链路。
+
+Reason:
+- 本仓零自研依赖，当前也不产 ROS 产物（`foray_docs/naming.md` §2.1：`foray_interfaces`
+  无 ROS 包）；`README.md` 依赖表里的 rosidl 只为将来的 msg 预留，现在用不上
+- colcon 对 `build_type=cmake` 原生支持——工作区里 `colcon build` 与单独
+  `cmake -S . -B build` 是同一套命令，CI 与本地不会漂
+- INTERFACE target 把 include 根、`cxx_std_17` 与安装布局一次说清，下游不必各自写 `-I`
+- 将来真正生成 ROS 消息时再拆 `diesel_interfaces` 消息包，与本包的纯 CMake 形态不冲突
+
+Alternatives:
+- `ament_cmake` 包：与 ROS 消息包生态一致，但当前没有任何 ament 产物，等于先引入 ament
+  构建依赖，`.foray-layer` 的零依赖承诺也会变得含糊
+
+Rejected:
+- 只加 `CMakeLists.txt`、不加 `package.xml` —— 只能被 `add_subdirectory` / `FetchContent`
+  消费，colcon 不识别为 package，下游无法 `find_package`
+- 让每个下游各自 `-I generated/` —— include 根、C++ 标准与安装布局分散在各仓，一次路径
+  调整就要全组织改

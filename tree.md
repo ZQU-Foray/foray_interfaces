@@ -28,6 +28,7 @@
 │   └── message_table.md         消息表（防文档漂移）
 ├── tests/                   测试
 │   ├── lower_link_test.cpp      生成物的契约测试（CTest 跑）
+│   ├── cmake_consumer/          安装冒烟夹具：find_package + target 消费（CI 与本地共用）
 │   ├── test_gen.py              生成器测试（CI 的 test-python 作业跑）
 │   └── fixtures/sample.yaml     生成器测试的样例定义——**非真实协议**
 ├── requirements.txt         Python 依赖（仅 PyYAML，供 CI 的 test-python 作业）

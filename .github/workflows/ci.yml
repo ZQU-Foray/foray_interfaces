@@ -216,31 +216,11 @@ jobs:
         run: |
           cmake --install build --prefix "$PWD/build/_install"
 
-          consumer="$RUNNER_TEMP/foray_interfaces_consumer"
-          mkdir -p "$consumer"
-          cat > "$consumer/CMakeLists.txt" <<'EOF'
-          cmake_minimum_required(VERSION 3.16)
-          project(consumer LANGUAGES CXX)
-          find_package(foray_interfaces REQUIRED)
-          add_executable(consumer main.cpp)
-          target_link_libraries(consumer PRIVATE foray_interfaces::lower_link)
-          EOF
-          # 只验证「能 include、能链接」，不断言消息表内容——消息表由算法组与
-          # 电控组共同确定，会随时间变化，不应让消费方冒烟跟着红。
-          cat > "$consumer/main.cpp" <<'EOF'
-          #include "lower_link.hpp"
-
-          int main() {
-              const auto size = foray::lower_link::expected_payload_size(foray::lower_link::MsgId{0});
-              (void)size;
-              return 0;
-          }
-          EOF
-
-          cmake -S "$consumer" -B "$consumer/build" \
+          # 消费方夹具在仓内 tests/cmake_consumer/，与本地验证共用同一份。
+          cmake -S tests/cmake_consumer -B "$RUNNER_TEMP/consumer-build" \
             -DCMAKE_PREFIX_PATH="$PWD/build/_install"
-          cmake --build "$consumer/build"
-          "$consumer/build/consumer"
+          cmake --build "$RUNNER_TEMP/consumer-build"
+          "$RUNNER_TEMP/consumer-build/consumer"
 
   # ---- 生成物一致性（本仓特有）----
   # generated/ 由 scripts/gen_lower_link.py 从 protocol/lower_link.yaml 生成。

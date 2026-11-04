@@ -10,7 +10,8 @@
 
 ## 快速开始
 
-> 本仓处于**初始化状态**，尚无源码。以下流程随 P0/P1 落地逐步可用。
+> 本仓已有协议生成物与纯 CMake 构建配置；消息表与冻结接口仍在 P0/P1 推进中，
+> 以下流程随落地逐步完整。
 
 ```bash
 # 1. 拉取（仓齐备后改为从元仓 foray_ws 一键拉取）
@@ -23,7 +24,10 @@ rosdep install -y -r --from-paths . --ignore-src --rosdistro humble
 # 3. 构建
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
-# 4. 运行
+# 4. 测试（生成物的契约测试，CTest）
+colcon test
+
+# 5. 运行
 # （待装配根就绪后补充）
 ```
 
@@ -32,7 +36,17 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 | 类型 | 依赖 |
 |---|---|
 | **自研仓** | **无**（依赖链最底层） |
-| **第三方** | ROS 2 Humble（`rosidl_default_generators` / `rosidl_default_runtime`） |
+| **第三方** | CMake ≥ 3.16 + C++17 编译器（构建生成物）；ROS 2 Humble 的 `rosidl_default_*` 为将来的 msg 预留，当前纯 CMake 形态不使用 |
+
+## 构建与消费
+
+本仓是 **header-only 纯 CMake 包**（`package.xml` 的 `build_type=cmake`，不依赖 ament / rosidl）：
+
+- 独立构建与测试：`cmake -S . -B build && cmake --build build && ctest --test-dir build`
+- 下游消费：`find_package(foray_interfaces REQUIRED)` 后
+  `target_link_libraries(<你的 target> PRIVATE foray_interfaces::lower_link)`——
+  target 自带 include 根与 `cxx_std_17`，不必再写 `-I`
+- 裸机侧不经过 CMake：直接 `#include "lower_link.hpp"`（include 根为 `generated/`）
 
 ## 接口
 

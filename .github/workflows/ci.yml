@@ -145,11 +145,13 @@ jobs:
         id: detect
         shell: bash
         run: |
-          if find . -name package.xml -not -path './.git/*' | grep -q .; then
+          # 只认 build_type=ament_cmake 的包。本仓是纯 CMake 包（build_type=cmake），
+          # 由 build-cmake 作业构建；否则一个 package.xml 会让两个作业重复编译。
+          if grep -rl --include=package.xml '<build_type>ament_cmake</build_type>' . 2>/dev/null | grep -q .; then
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "未发现 ROS 2 package，跳过 ROS 2 构建。"
+            echo "未发现 ROS 2（ament_cmake）package，跳过 ROS 2 构建。"
           fi
 
       - name: 安装依赖 (rosdep)
@@ -176,10 +178,56 @@ jobs:
           colcon test --event-handlers console_direct+
           colcon test-result --verbose
 
+  # ---- CMake 构建与测试（纯 CMake 包）----
+  # 本仓导出的 foray_interfaces::lower_link 是 header-only INTERFACE target，
+  # 没有可执行产物，很容易「看着绿其实是空转」。这里既跑契约测试，也验证
+  # install/export 之后的 find_package 链路——下游正是这样消费本仓的。
+  build-cmake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检测是否为 CMake 包
+        id: detect
+        shell: bash
+        run: |
+          if [ -f CMakeLists.txt ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "未发现 CMakeLists.txt，跳过 CMake 构建。"
+          fi
+
+      - name: 配置
+        if: steps.detect.outputs.found == 'true'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: 构建
+        if: steps.detect.outputs.found == 'true'
+        run: cmake --build build -j"$(nproc)"
+
+      - name: 测试 (CTest)
+        if: steps.detect.outputs.found == 'true'
+        run: ctest --test-dir build --output-on-failure
+
+      - name: 安装并验证 find_package
+        if: steps.detect.outputs.found == 'true'
+        shell: bash
+        run: |
+          cmake --install build --prefix "$PWD/build/_install"
+
+          # 消费方夹具在仓内 tests/cmake_consumer/，与本地验证共用同一份。
+          cmake -S tests/cmake_consumer -B "$RUNNER_TEMP/consumer-build" \
+            -DCMAKE_PREFIX_PATH="$PWD/build/_install"
+          cmake --build "$RUNNER_TEMP/consumer-build"
+          "$RUNNER_TEMP/consumer-build/consumer"
+
   # ---- 生成物一致性（本仓特有）----
   # generated/ 由 scripts/gen_lower_link.py 从 protocol/lower_link.yaml 生成。
   # 重新生成后若与提交内容有差异，说明有人手改了生成物、或改了定义却忘了重新生成。
   # 这是「把架构变成可执行约束」的一个实例（foray_docs/repository_structure.md §6.5）。
+  # 生成物的契约测试（tests/lower_link_test.cpp）由 build-cmake 作业用 CTest 跑，
+  # 这里不再重复编译——本作业只回答「生成物与定义是否一致」。
   gen-check:
     runs-on: ubuntu-latest
     steps:
@@ -217,19 +265,3 @@ jobs:
             exit 1
           fi
           echo "生成物与定义一致。"
-
-      - name: 编译并运行生成物的契约测试
-        if: steps.detect.outputs.found == 'true'
-        shell: bash
-        run: |
-          # 生成的结构体带 static_assert(sizeof(X) == N)，字段写错导致的
-          # 填充/对齐问题在这里暴露，而不是漏到场上。
-          if [ ! -f tests/lower_link_test.cpp ]; then
-            echo "未发现契约测试，仅做编译验证。"
-            printf '#include "lower_link.hpp"\nint main() { return 0; }\n' > /tmp/link_smoke.cpp
-            g++ -std=c++17 -Wall -Wextra -Werror -I generated /tmp/link_smoke.cpp -o /tmp/link_smoke
-            exit 0
-          fi
-          g++ -std=c++17 -Wall -Wextra -Werror -I generated \
-            tests/lower_link_test.cpp -o /tmp/lower_link_test
-          /tmp/lower_link_test

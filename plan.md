@@ -10,7 +10,7 @@
 
 ### P0 · 定契约（当前阶段）
 
-- [x] **I1 INTERFACE CMake target**（`foray_interfaces::lower_link`）：`find_package(foray_interfaces)`
+- [x] **I1 INTERFACE CMake target**（PR #3，`foray_interfaces::lower_link`）：`find_package(foray_interfaces)`
       可用，target 自带 include 根与 `cxx_std_17`；`ctest` 跑生成物契约测试，CI 的 `build-cmake`
       作业验证安装后的消费路径（见 `decision.md` 2026-11-03）。
       **状态注记**：代码与 CI 已完成，但仍在 PR #3（`feat/lower-link-protocol → dev`）里，未落地 `dev`。
@@ -20,7 +20,7 @@
 - [ ] **I3 评审冻结 robolink.md v0.2**（L2）：云台角 rad、角速度前馈、`safety_state` 取值、
       `GIMBAL_ATTITUDE`；v0.1 登记稿已随 PR #2 合并，v0.2 修订稿与 lower_link 的三个待裁决点
       仍待组长裁决。
-- [x] **I4 生成器与生成物**（只生成内容层：`MsgId` + POD 结构体 + 载荷编解码）：
+- [x] **I4 生成器与生成物**（commits 7cd6001；只生成内容层：`MsgId` + POD 结构体 + 载荷编解码）：
       `scripts/gen_lower_link.py` + `generated/lower_link.hpp` + CTest 契约测试（`tests/lower_link_test.cpp`）
       + 生成器 fixture 测试（`tests/test_gen.py`）+ CI 一致性校验。链路已通，内容待 I2 填充。
 

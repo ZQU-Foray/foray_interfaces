@@ -129,7 +129,7 @@ def gen_hpp(spec) -> str:
     a("#include <cstdint>")
     a("#include <cstring>")
     a("")
-    a("namespace foray::lower_link {")
+    a("namespace diesel::lower_link {")
     a("")
     major, minor = (int(x) for x in spec["protocol"]["version"].split(".")[:2])
     a("// 内容层的 schema 版本——两侧不一致说明字段布局已经不同。")
@@ -218,7 +218,7 @@ def gen_hpp(spec) -> str:
         a("    return true;")
         a("}")
         a("")
-    a("}  // namespace foray::lower_link")
+    a("}  // namespace diesel::lower_link")
     a("")
     return "\n".join(L)
 

@@ -353,5 +353,5 @@ READY ──首次有效控制或状态帧收发──▶ ACTIVE
 | --- | --- |
 | MCU 协议栈（帧/槽位/消息/交付邮箱） | 已实现于 `controller_code/Libraries/Protocol/robolink/`，含 v0.2 的 GIMBAL_ATTITUDE；主机测试全绿，黄金帧由独立 Python 生成器产出，CRC 与 zlib 逐位一致 |
 | MCU 链路任务（CDC 消费者/HELLO/心跳/控制快照/姿态反馈） | 阶段 0b/1 已实现，握手、拔线重连、30 分钟浸泡板级通过（2026-10-23）；阶段 2 控制快照与 v0.2 改动主机测试全绿，板级验收待做 |
-| PC 侧实现 | `foray_platform` 分支 `feat/usb-cdc` 有候选编解码（v0.1 口径，云台角按 deg）；改用 rad 与 GIMBAL_ATTITUDE 解码见分支 `feat/robolink-v0.2` |
+| PC 侧实现 | `diesel_platform` 分支 `feat/usb-cdc` 有候选编解码（v0.1 口径，云台角按 deg）；改用 rad 与 GIMBAL_ATTITUDE 解码见分支 `feat/robolink-v0.2` |
 | 双端上线 | 从未上线，无兼容性负担 |

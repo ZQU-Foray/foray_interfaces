@@ -1,4 +1,4 @@
-# foray_interfaces
+# diesel_interfaces
 
 > **X2** · owner 角色：架构
 
@@ -13,9 +13,9 @@
 > 本仓处于**初始化状态**，尚无源码。以下流程随 P0/P1 落地逐步可用。
 
 ```bash
-# 1. 拉取（仓齐备后改为从元仓 foray_ws 一键拉取）
-git clone git@github.com:ZQU-Foray/foray_interfaces.git
-cd foray_interfaces
+# 1. 拉取（仓齐备后改为从元仓 diesel_ws 一键拉取）
+git clone git@github.com:ZQU-Foray/diesel_interfaces.git
+cd diesel_interfaces
 
 # 2. 依赖安装
 rosdep install -y -r --from-paths . --ignore-src --rosdistro humble
@@ -76,7 +76,7 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 | 方向 | 对象 |
 |---|---|
 | **上游**（本仓依赖谁） | 无自研依赖 |
-| **下游**（谁依赖本仓） | `foray_platform` · `foray_localization` · `foray_vision` · `foray_auto_aim` · `foray_navigation` · `foray_decision` · `foray_robots` · `foray_ws` |
+| **下游**（谁依赖本仓） | `diesel_platform` · `diesel_localization` · `diesel_vision` · `diesel_auto_aim` · `diesel_navigation` · `diesel_decision` · `diesel_robots` · `diesel_ws` |
 
 ## 参考
 

@@ -10,7 +10,7 @@
 ├── decision.md              关键工程决策日志
 ├── tree.md                  本文件
 ├── CODEOWNERS               Review 自动分派
-├── .foray-layer             所属层与依赖边界（CI 校验）
+├── .diesel-layer             所属层与依赖边界（CI 校验）
 ├── .gitignore
 ├── protocol/                协议契约
 │   ├── lower_link.md            上位机 ↔ 下位机通讯协议（人读 · 内容层）

@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <cstdio>
 
-using namespace foray::lower_link;
+using namespace diesel::lower_link;
 
 namespace {
 

@@ -34,7 +34,7 @@ DRIVER = """
 
 #include <cstdio>
 
-using namespace foray::lower_link;
+using namespace diesel::lower_link;
 
 int main() {
     int fails = 0;

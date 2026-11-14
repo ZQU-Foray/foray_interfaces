@@ -189,7 +189,7 @@ jobs:
         id: detect
         shell: bash
         run: |
-          if [ -f scripts/gen_lower_link.py ]; then
+          if [ -f scripts/gen_lower_link.py ] || [ -f scripts/gen_vision.py ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
@@ -210,10 +210,13 @@ jobs:
         if: steps.detect.outputs.found == 'true'
         shell: bash
         run: |
-          python3 scripts/gen_lower_link.py
+          for script in scripts/gen_*.py; do
+            echo "--- $script"
+            python3 "$script"
+          done
           if ! git diff --exit-code -- generated/; then
-            echo "::error::generated/ 与 protocol/lower_link.yaml 不一致。"
-            echo "::error::请本地执行 python3 scripts/gen_lower_link.py 后一并提交。"
+            echo "::error::generated/ 与 protocol/*.yaml 不一致。"
+            echo "::error::请本地执行 scripts/gen_*.py 后一并提交。"
             exit 1
           fi
           echo "生成物与定义一致。"
@@ -224,12 +227,11 @@ jobs:
         run: |
           # 生成的结构体带 static_assert(sizeof(X) == N)，字段写错导致的
           # 填充/对齐问题在这里暴露，而不是漏到场上。
-          if [ ! -f tests/lower_link_test.cpp ]; then
-            echo "未发现契约测试，仅做编译验证。"
-            printf '#include "lower_link.hpp"\nint main() { return 0; }\n' > /tmp/link_smoke.cpp
-            g++ -std=c++17 -Wall -Wextra -Werror -I generated /tmp/link_smoke.cpp -o /tmp/link_smoke
-            exit 0
-          fi
-          g++ -std=c++17 -Wall -Wextra -Werror -I generated \
-            tests/lower_link_test.cpp -o /tmp/lower_link_test
-          /tmp/lower_link_test
+          # 每个生成物一份契约测试；新增生成器时在这里补一条。
+          for test in tests/lower_link_test.cpp tests/vision_test.cpp; do
+            [ -f "$test" ] || continue
+            name=$(basename "$test" .cpp)
+            g++ -std=c++17 -Wall -Wextra -Werror -I generated \
+              "$test" -o "/tmp/$name"
+            "/tmp/$name"
+          done

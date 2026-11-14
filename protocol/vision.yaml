@@ -1,0 +1,97 @@
+# 视觉前端 ↔ 视觉后端契约 —— 机器可读定义（唯一事实来源）
+#
+# 内容层代码由 scripts/gen_vision.py 生成，禁止手写。
+# 人读约定见 protocol/vision.md 与仓库 README。
+#
+# 本文件只定义「字段与语义」，不定义话题名、QoS、发送周期——那些归装配根
+# （diesel_robots）与各仓的运行时配置。
+#
+# 改协议 = 改本文件 + 重新生成 + 提交。CI 会校验生成物与定义一致。
+
+protocol:
+  name: vision
+  version: "0.1.0"
+  status: draft
+
+# C++ 侧固定容量上限：前端逐帧最多 32 个观测，后端快照最多 8 条轨迹。
+# 上限固定而非动态分配，是为了让后端跟踪环满足 1–10 ms 的硬实时预算。
+caps:
+  observations: 32
+  tracks: 8
+
+enums:
+  TargetClass:
+    doc: 目标类别；前端按类别装配检测器，后端按类别选解算策略
+    values:
+      - {name: Armor, value: 0, doc: 装甲板}
+      - {name: EnergyMechanism, value: 1, doc: 能量机关}
+      - {name: Outpost, value: 2, doc: 前哨站}
+      - {name: Base, value: 3, doc: 基地}
+      - {name: Unknown, value: 4, doc: 未识别}
+  ObservationSource:
+    doc: 观测来源；用于后端融合时区分自车与他车
+    values:
+      - {name: OwnCamera, value: 0, doc: 自车相机}
+      - {name: AllyShared, value: 1, doc: 友军共享}
+  TrackState:
+    doc: 轨迹状态机
+    values:
+      - {name: Lost, value: 0}
+      - {name: Detecting, value: 1}
+      - {name: Tracking, value: 2}
+      - {name: TempLost, value: 3}
+
+messages:
+  - name: Observation
+    doc: 单个目标的单帧观测（前端 → 后端）
+    fields:
+      - {name: stamp, type: time, doc: 图像采集时刻，绝对时间}
+      - {name: frame_id, type: string, doc: 相机光学系（REP-105 约定，如 camera_optical_frame）}
+      - {name: target_class, type: TargetClass, doc: 目标类别}
+      - {name: source, type: ObservationSource, doc: 观测来源}
+      - {name: armor_id, type: int8, default: -1, doc: "装甲板编号 0-2；-1 表示未编号"}
+      - {name: corners, type: "float32[8]", doc: "像素四角 u0,v0..u3,v3，顺序为左上/右上/右下/左下"}
+      - {name: xyz_camera, type: "float32[3]", unit: m, doc: 目标位置（相机光学系）；未解算时为 0}
+      - {name: normal_camera, type: "float32[3]", unit: 1, doc: 装甲板法向（相机光学系，单位向量）}
+      - {name: normal_valid, type: bool, doc: 法向是否可信；PnP 镜像解或未标定时为 false}
+      - {name: yaw, type: float32, unit: rad, doc: 目标自转角；未知时为 0 且由 normal_valid 判定}
+      - {name: confidence, type: float32, unit: 1, doc: "检测置信度 0-1"}
+      - {name: reprojection_error, type: float32, unit: px, doc: PnP 重投影误差；未解算时为 0}
+
+  - name: ObservationArray
+    doc: 单帧观测集合；一帧一条，保持检测输出顺序
+    fields:
+      - {name: stamp, type: time, doc: 图像采集时刻}
+      - {name: frame_id, type: string, doc: 相机光学系}
+      - {name: observations, type: "Observation[]", cap: observations, doc: 本帧全部观测}
+
+  - name: TrackedTarget
+    doc: 后端维护的单条目标轨迹
+    fields:
+      - {name: id, type: uint8, doc: 轨号，仓内唯一且单调递增}
+      - {name: target_class, type: TargetClass, doc: 目标类别}
+      - {name: xyz_world, type: "float32[3]", unit: m, doc: 世界系位置（REP-105）}
+      - {name: velocity_world, type: "float32[3]", unit: m/s, doc: 世界系速度}
+      - {name: armor_id, type: int8, default: -1, doc: 当前瞄准的装甲板编号；-1 表示未选板}
+      - {name: confidence, type: float32, unit: 1, doc: "轨迹置信度 0-1"}
+      - {name: age_s, type: float32, unit: s, doc: 轨迹自建立以来的时长}
+      - {name: missed_frames, type: uint16, doc: 连续未命中帧数}
+      - {name: state, type: TrackState, doc: 轨迹状态}
+
+  - name: WorldSnapshot
+    doc: 后端输出的世界模型快照；决策层与自瞄共用同一份
+    fields:
+      - {name: stamp, type: time, doc: 快照生成时刻}
+      - {name: frame_id, type: string, doc: 世界系（REP-105，通常为 map）}
+      - {name: tracks, type: "TrackedTarget[]", cap: tracks, doc: 当前全部轨迹}
+
+  - name: GimbalCommand
+    doc: 云台角指令（后端 → 链路）；yaw 左正、pitch 下正，全队统一
+    fields:
+      - {name: stamp, type: time, doc: 指令生成时刻}
+      - {name: frame_id, type: string, doc: 指令坐标系（通常为 gimbal）}
+      - {name: yaw, type: float32, unit: rad, doc: 目标 yaw，向左为正}
+      - {name: pitch, type: float32, unit: rad, doc: 目标 pitch，向下为正}
+      - {name: distance_m, type: float32, unit: m, doc: 目标距离，用于弹道解算与开火门限}
+      - {name: target_id, type: int16, default: -1, doc: 目标轨迹号；-1 表示直瞄无轨迹}
+      - {name: valid, type: bool, doc: 指令是否有效；false 时上层必须保持当前姿态}

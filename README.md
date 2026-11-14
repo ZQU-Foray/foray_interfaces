@@ -43,6 +43,7 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 | **上位机 ↔ 下位机通讯协议** | 两份候选稿并行待收敛：lower_link（仅内容层，YAML 单源，消息表待填写）/ 上下位机链路协议 v0.2（帧层 + 内容层全栈，8 条消息，含云台姿态反馈） | 候选 → [`lower_link.md`](protocol/lower_link.md) · [`robolink.md`](protocol/robolink.md) |
 | **决策层接口** | `WorldSnapshot` / `ActionMask` / `Decision` | 待冻结（P0） |
 | **机间态势协议** | 哨兵 ↔ 步兵的态势消息 | 待冻结（P0） |
+| **视觉前后端契约** | `Observation` / `ObservationArray` / `TrackedTarget` / `WorldSnapshot` / `GimbalCommand` | 草案 ✔ 已生成 → [`vision.md`](protocol/vision.md) |
 | 裁判系统消息 | 串口协议 `V1.7.0 (20241225)`，7 个消息 | 待迁入 |
 
 ## 约定（必须遵守）
@@ -76,7 +77,7 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 | 方向 | 对象 |
 |---|---|
 | **上游**（本仓依赖谁） | 无自研依赖 |
-| **下游**（谁依赖本仓） | `diesel_platform` · `diesel_localization` · `diesel_vision` · `diesel_auto_aim` · `diesel_navigation` · `diesel_decision` · `diesel_robots` · `diesel_ws` |
+| **下游**（谁依赖本仓） | `diesel_platform` · `diesel_localization` · `diesel_vision_frontend` · `diesel_vision_backend` · `diesel_navigation` · `diesel_decision` · `diesel_robots` · `diesel_ws` |
 
 ## 参考
 

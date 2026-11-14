@@ -16,6 +16,9 @@
       「禁变长字段」，需决定改用数值枚举还是放弃该条
 - [ ] **下位机的绝对时间来源未定**——`stamp` 定为绝对时间（Unix 纪元），而 MCU 复位后没有真实
       时间，必须有握手/授时机制。这属链路层，待与电控组确认
+- [x] 视觉前后端契约（`protocol/vision.yaml` + `scripts/gen_vision.py`）：`Observation`/`ObservationArray`/
+      `TrackedTarget`/`WorldSnapshot`/`GimbalCommand`，C++ 固定容量 32 观测 / 8 轨迹，
+      `msg/` 与字段表同源生成，CI `gen-check` 校验生成物一致（2026-11-14，草案 v0.1.0）
 - [ ] 冻结 `WorldSnapshot` 字段清单（A–F 分区）
 - [ ] 冻结 `ActionMask` / `Decision` 定义
 - [ ] 起草机间态势协议（字段 / 单位 / TTL / 置信度 / 版本协商）

@@ -15,15 +15,22 @@
 ├── protocol/                协议契约
 │   ├── lower_link.md            上位机 ↔ 下位机通讯协议（人读 · 内容层）
 │   ├── lower_link.yaml          机器可读定义（唯一事实来源）
+│   ├── vision.md                视觉前后端契约（人读）
+│   ├── vision.yaml              视觉契约机器可读定义（唯一事实来源）
 │   └── robolink.md              上下位机链路协议 v0.2（全栈候选稿：帧层 + 内容层）
 ├── scripts/
-│   └── gen_lower_link.py    内容层代码生成器
+│   ├── gen_lower_link.py    内容层代码生成器
+│   └── gen_vision.py        视觉契约生成器
 ├── generated/               由生成器产出——禁止手写
 │   ├── lower_link.hpp           裸机 C++：MsgId + POD 结构体 + 载荷编解码
+│   ├── vision.hpp               视觉契约 C++ 枚举 + POD + 固定容量
+│   ├── vision_table.md          视觉契约字段表
 │   ├── msg/*.msg                ROS 2 消息类型
 │   └── message_table.md         消息表（防文档漂移）
 ├── tests/                   测试
 │   ├── lower_link_test.cpp      生成物的契约测试（CI 编译并运行）
+│   ├── vision_test.cpp          视觉生成物的契约测试
+│   ├── test_gen_vision.py       视觉生成器测试
 │   ├── test_gen.py              生成器测试（CI 的 test-python 作业跑）
 │   └── fixtures/sample.yaml     生成器测试的样例定义——**非真实协议**
 ├── requirements.txt         Python 依赖（仅 PyYAML，供 CI 的 test-python 作业）

@@ -59,3 +59,24 @@ Alternatives:
 Rejected:
 - 累计角系（见 Reason）
 - 发送欧拉角 yaw/pitch：ZYX 分解在 pitch ±90° 附近奇异，且丢失 roll
+
+## Decision / Date: 2026-11-14 视觉前后端契约独立成 spec
+
+**Context**: 视觉前后端分家后，前端只输出逐帧观测、后端做融合与跟踪。两者之间的字段
+（观测、世界快照、云台指令）此前只存在于各仓私有头文件里，跨仓无法对齐；`lower_link` 的
+生成器面向上下位机内容层，其 `time`/`POD`/`max_payload` 约束不适合直接承载视觉契约。
+
+**Decision**: 新增独立的 `protocol/vision.yaml` + `scripts/gen_vision.py`，生成
+`generated/vision.hpp`（枚举 + POD + 固定容量）与 `generated/msg/*.msg` 与字段表；
+C++ 侧观测数组固定 32、轨迹数组固定 8；`armor_id` / `target_id` 用 `-1` 表示未编号/无轨迹；
+CI 的 `gen-check` 重新生成后 `git diff --exit-code`，并编译运行 `tests/vision_test.cpp`。
+
+**Reason**: 契约必须有一处权威文本，否则前后端会各写一套字段；固定容量让后端跟踪环不出现
+动态分配；`-1` 而不是 0 让「未编号」与「第一号板」不可能混淆。
+
+**Rejected**: 复用 `lower_link` 生成器（它的消息号/载荷上限是链路层语义，会污染视觉契约）；
+C++ 侧用 `std::vector`（违反 1–10 ms 硬实时预算）；本批同时建 ROS 2 package
+（`package.xml`/`CMakeLists.txt` 属于装配范畴，待工作区需要 `colcon build` 时再做，msg 文件已是权威字段清单）。
+
+**Source**: `diesel_vision_frontend` I5 的 `Observation`/`TargetClass`，`diesel_vision_backend`
+的 `AimPipelineResult`/`WorldAimResult`。

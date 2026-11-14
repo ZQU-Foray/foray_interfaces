@@ -47,8 +47,7 @@ void test_enum_roundtrip() {
     check(!target_class_from_string("laser").has_value(), "未知类别返回 nullopt");
     for (std::size_t i = 0; i < kObservationSourceCount; ++i) {
         const auto value = static_cast<ObservationSource>(i);
-        check(observation_source_from_string(to_string(value)) == value,
-              "ObservationSource 往返");
+        check(observation_source_from_string(to_string(value)) == value, "ObservationSource 往返");
     }
     for (std::size_t i = 0; i < kTrackStateCount; ++i) {
         const auto value = static_cast<TrackState>(i);
@@ -58,25 +57,22 @@ void test_enum_roundtrip() {
 
 void test_messages_carry_stamp_and_frame() {
     const Observation observation{};
-    check(observation.stamp.sec == 0 && observation.stamp.nanosec == 0,
-          "Observation 有 stamp");
+    check(observation.stamp.sec == 0 && observation.stamp.nanosec == 0, "Observation 有 stamp");
     check(observation.frame_id.empty(), "Observation 有 frame_id");
     check(observation.armor_id == -1, "Observation.armor_id 默认 -1 表示未编号");
 
     const ObservationArray frame{};
     check(frame.observation_count == 0, "ObservationArray 自带计数");
-    check(frame.observations.size() == kVisionMaxObservationItems,
-          "ObservationArray 容量固定");
+    check(frame.observations.size() == kVisionMaxObservationItems, "ObservationArray 容量固定");
 
     const WorldSnapshot snapshot{};
-    check(snapshot.tracks.size() == kVisionMaxTrackedTargetItems,
-          "WorldSnapshot 轨迹容量固定");
+    check(snapshot.tracks.size() == kVisionMaxTrackedTargetItems, "WorldSnapshot 轨迹容量固定");
 
     const GimbalCommand command{};
     check(!command.valid && command.target_id == -1, "GimbalCommand 默认无效且无轨迹");
 }
 
-}  // namespace
+} // namespace
 
 int main() {
     test_time_layout();
